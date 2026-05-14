@@ -12,161 +12,83 @@ function tempStatus(v) {
   if (v > 6.5)        return { cls: "badge-warn",  txt: "⚠️ Limite"  };
   return                     { cls: "badge-ok",    txt: "✓ Normal"   };
 }
-const [pdfModal, setPdfModal] = useState(false);
 
 async function loadJsPDF() {
   if (window.jspdf) return window.jspdf.jsPDF;
   return new Promise((res, rej) => {
     const s = document.createElement("script");
-    s.src = "https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js";
-    s.onload = () => res(window.jspdf.jsPDF);
-    s.onerror = () => rej(new Error("Impossible de charger jsPDF"));
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = () => res(window.jspdf.jsPDF); s.onerror = rej;
     document.head.appendChild(s);
   });
 }
 
-async function exportPDF(vaccins, releves, type) {
+async function exportPDF(vaccins, releves) {
   const jsPDF = await loadJsPDF();
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const today = new Date().toLocaleDateString("fr-FR");
-  const W = 210;
-
-  // ═══ HEADER (same for all reports) ═══
-  doc.setFillColor(10, 37, 64);
-  doc.rect(0, 0, W, 28, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18); doc.setFont("helvetica", "bold");
+  const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+  const today = new Date().toLocaleDateString("fr-FR"); const W = 210;
+  doc.setFillColor(10,37,64); doc.rect(0,0,W,28,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(18); doc.setFont("helvetica","bold");
   doc.text("VaccineChain Pro", 14, 12);
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.setFontSize(9); doc.setFont("helvetica","normal");
   doc.text("I.S.S.I.G Gabes — Rapport du : " + today, 14, 22);
-
   let y = 36;
-
-  // ═══ REPORT TYPE 1: STOCK VACCINAL ═══
-  if (type === "stock" || type === "complet") {
-    doc.setFillColor(26, 86, 219);
-    doc.rect(0, y, W, 8, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
-    doc.text("STOCK VACCINAL", 14, y + 5.5); y += 13;
-
-    const cols = [14, 54, 94, 118, 142, 168];
-    ["Vaccin","Lot","Qte","Seuil","Peremption","Statut"].forEach((h, i) => {
-      doc.setFillColor(10, 37, 64);
-      if (i === 0) doc.rect(14, y, 182, 7, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8); doc.setFont("helvetica", "bold");
-      doc.text(h, cols[i] + 1, y + 5);
-    }); y += 7;
-
-    vaccins.forEach((v, i) => {
-      if (y > 255) { doc.addPage(); y = 20; }
-      doc.setFillColor(i % 2 === 0 ? 248 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
-      doc.rect(14, y, 182, 7, "F");
-      doc.setTextColor(30, 41, 59);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-      doc.text(v.nom, cols[0]+1, y+5);
-      doc.text(v.lot||"-", cols[1]+1, y+5);
-      doc.text(String(v.quantite), cols[2]+1, y+5);
-      doc.text(String(v.seuil_min), cols[3]+1, y+5);
-      doc.text(v.peremption||"-", cols[4]+1, y+5);
-      v.statut === "faible"
-        ? (doc.setTextColor(180,83,9), doc.text("Faible", cols[5]+1, y+5))
-        : (doc.setTextColor(5,150,105), doc.text("OK", cols[5]+1, y+5));
-      y += 7;
-    });
-    y += 10;
-  }
-
-  // ═══ REPORT TYPE 2: TEMPÉRATURES ═══
-  if (type === "temperature" || type === "complet") {
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFillColor(14, 116, 144);
-    doc.rect(0, y, W, 8, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
-    doc.text("RELEVÉS TEMPÉRATURES", 14, y + 5.5); y += 13;
-
-    const rc = [14, 50, 90, 120, 150, 175];
-    ["Nom","Date","Min","Max","Moy","Obs"].forEach((h, i) => {
-      doc.setFillColor(14, 116, 144);
-      if (i === 0) doc.rect(14, y, 182, 7, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8); doc.setFont("helvetica", "bold");
-      doc.text(h, rc[i]+1, y+5);
-    }); y += 7;
-
-    releves.forEach((r, i) => {
-      if (y > 255) { doc.addPage(); y = 20; }
-      doc.setFillColor(i % 2 === 0 ? 236 : 255, i % 2 === 0 ? 254 : 255, i % 2 === 0 ? 255 : 255);
-      doc.rect(14, y, 182, 7, "F");
-      doc.setTextColor(30, 41, 59);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-      doc.text((r.nom||"-").slice(0,18), rc[0]+1, y+5);
-      doc.text((r.date||"-").slice(0,14), rc[1]+1, y+5);
-      doc.text(String(r.temp_min||"-"), rc[2]+1, y+5);
-      doc.text(String(r.temp_max||"-"), rc[3]+1, y+5);
-      doc.text(String(r.temp_moy||"-"), rc[4]+1, y+5);
-      doc.text((r.obs||"-").slice(0,16), rc[5]+1, y+5);
-      y += 7;
-    });
-    y += 10;
-  }
-
-  // ═══ REPORT TYPE 3: ALERTES ═══
-  if (type === "alertes" || type === "complet") {
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFillColor(185, 28, 28);
-    doc.rect(0, y, W, 8, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
-    doc.text("ALERTES STOCK", 14, y + 5.5); y += 13;
-
-    const alertes = vaccins.filter(v =>
-      v.statut === "faible" ||
-      v.quantite <= v.seuil_min ||
-      (v.peremption && new Date(v.peremption) - new Date() < 30 * 86400000)
-    );
-
-    if (alertes.length === 0) {
-      doc.setTextColor(5, 150, 105);
-      doc.setFontSize(10);
-      doc.text("✓ Aucune alerte — stock en bon état", 14, y + 5);
-      y += 15;
-    } else {
-      alertes.forEach((v, i) => {
-        if (y > 255) { doc.addPage(); y = 20; }
-        doc.setFillColor(254, 242, 242);
-        doc.rect(14, y, 182, 7, "F");
-        doc.setTextColor(185, 28, 28);
-        doc.setFontSize(8); doc.setFont("helvetica", "bold");
-        doc.text("⚠ " + v.nom, 16, y + 5);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(30, 41, 59);
-        doc.text("Qte: " + v.quantite + " Seuil: " + v.seuil_min + " Exp: " + (v.peremption||"-"), 70, y+5);
-        y += 7;
-      });
-    }
-    y += 10;
-  }
-
-  // ═══ FOOTER on every page ═══
-  const pages = doc.getNumberOfPages();
-  for (let i = 1; i <= pages; i++) {
-    doc.setPage(i);
-    doc.setFillColor(240, 244, 248);
-    doc.rect(0, 284, W, 13, "F");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.setFont("helvetica", "normal");
+  doc.setFillColor(26,86,219); doc.rect(0,y,W,8,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont("helvetica","bold");
+  doc.text("STOCK VACCINAL", 14, y+5.5); y+=13;
+  const cols=[14,54,94,118,142,168];
+  ["Vaccin","Lot","Qte","Seuil","Peremption","Statut"].forEach((h,i)=>{
+    doc.setFillColor(10,37,64); if(i===0) doc.rect(14,y,182,7,"F");
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
+    doc.text(h,cols[i]+1,y+5);
+  }); y+=7;
+  vaccins.forEach((v,i)=>{
+    if(y>255){doc.addPage();y=20;}
+    doc.setFillColor(i%2===0?248:255,i%2===0?250:255,i%2===0?252:255);
+    doc.rect(14,y,182,7,"F"); doc.setTextColor(30,41,59);
+    doc.setFont("helvetica","normal"); doc.setFontSize(8);
+    doc.text(v.nom,cols[0]+1,y+5); doc.text(v.lot||"—",cols[1]+1,y+5);
+    doc.text(String(v.quantite),cols[2]+1,y+5); doc.text(String(v.seuil_min),cols[3]+1,y+5);
+    doc.text(v.peremption||"—",cols[4]+1,y+5);
+    v.statut==="faible"?(doc.setTextColor(180,83,9),doc.text("Faible",cols[5]+1,y+5))
+                       :(doc.setTextColor(5,150,105),doc.text("OK",cols[5]+1,y+5));
+    y+=7;
+  });
+  y+=10; if(y>230){doc.addPage();y=20;}
+  doc.setFillColor(14,159,110); doc.rect(0,y,W,8,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont("helvetica","bold");
+  doc.text("RELEVES TEMPERATURE", 14, y+5.5); y+=13;
+  const rc=[14,42,66,96,130,168];
+  ["Date","Heure","Temp","Statut","Responsable","Obs"].forEach((h,i)=>{
+    if(i===0){doc.setFillColor(10,37,64);doc.rect(14,y,182,7,"F");}
+    doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont("helvetica","bold");
+    doc.text(h,rc[i]+1,y+5);
+  }); y+=7;
+  releves.slice(0,20).forEach((r,i)=>{
+    if(y>270){doc.addPage();y=20;}
+    doc.setFillColor(i%2===0?248:255,i%2===0?250:255,i%2===0?252:255);
+    doc.rect(14,y,182,7,"F"); doc.setTextColor(30,41,59);
+    doc.setFont("helvetica","normal"); doc.setFontSize(8);
+    doc.text(String(r.date),rc[0]+1,y+5); doc.text(r.heure,rc[1]+1,y+5);
+    doc.text(r.temp+"C",rc[2]+1,y+5);
+    const ok=r.temp>=2&&r.temp<=8,lim=r.temp>6.5&&r.temp<=8;
+    !ok?(doc.setTextColor(185,28,28),doc.text("Anormal",rc[3]+1,y+5))
+    :lim?(doc.setTextColor(180,83,9),doc.text("Limite",rc[3]+1,y+5))
+        :(doc.setTextColor(5,150,105),doc.text("Normal",rc[3]+1,y+5));
+    doc.setTextColor(30,41,59);
+    doc.text((r.nom||"—").slice(0,18),rc[4]+1,y+5);
+    doc.text((r.obs||"—").slice(0,16),rc[5]+1,y+5);
+    y+=7;
+  });
+  const pages=doc.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i); doc.setFillColor(240,244,248); doc.rect(0,284,W,13,"F");
+    doc.setFontSize(8); doc.setTextColor(100,116,139); doc.setFont("helvetica","normal");
     doc.text("VaccineChain Pro · OMS · I.S.S.I.G Gabes", 14, 291);
-    doc.text("Page " + i + "/" + pages, W-14, 291, { align: "right" });
+    doc.text("Page "+i+"/"+pages, W-14, 291, {align:"right"});
   }
-
-  doc.save("VaccineChain_" + type + "_" + today.replace(/\//g, "-") + ".pdf");
+  doc.save("VaccineChain_"+today.replace(/\\//g,"-")+".pdf");
 }
-
-
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
@@ -400,46 +322,11 @@ function DashboardTab({ vaccins, releves, toast, isAdmin }) {
         </div>
       )}
       {isAdmin&&(
-         <div className="btn-row" style={{marginBottom:16}}>
-    <button className="btn btn-primary" onClick={()=>setPdfModal(true)}>
-      📄 Exporter PDF
-    </button>
-  </div>
-)}
-
-{pdfModal&&(
-  <div style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}}>
-    <div style={{background:"white",borderRadius:12,padding:32,width:320,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
-      <h3 style={{marginBottom:20,color:"#0a2540"}}>📄 Choisir le rapport</h3>
-      {[
-        {type:"stock", icon:"📦", label:"Stock Vaccinal"},
-        {type:"temperature", icon:"🌡️", label:"Températures"},
-        {type:"alertes", icon:"⚠️", label:"Alertes Stock"},
-        {type:"complet", icon:"📊", label:"Rapport Complet"},
-      ].map(({type,icon,label})=>(
-        <button key={type} className="btn btn-primary"
-          style={{width:"100%",marginBottom:10,textAlign:"left"}}
-          onClick={async()=>{
-            setPdfModal(false);
-            toast("⏳ Génération "+label+"...");
-            try {
-              await exportPDF(vaccins, releves, type);
-              toast("✅ PDF "+label+" prêt !");
-            } catch(e) {
-              alert("Erreur PDF: "+e.message);
-            }
-          }}>
-          {icon} {label}
-        </button>
-      ))}
-      <button onClick={()=>setPdfModal(false)}
-        style={{width:"100%",marginTop:4,padding:"8px",border:"1px solid #ccc",borderRadius:6,cursor:"pointer",background:"white"}}>
-        Annuler
-      </button>
-    </div>
-  </div>
-)}
-
+        <div className="btn-row" style={{marginBottom:16}}>
+          <button className="btn btn-primary" onClick={async()=>{toast("⏳ Génération...");await exportPDF(vaccins,releves);}}>
+  📄 Rapport PDF
+</button>
+        </div>
       )}
       <div className="card">
         <div className="card-title">📦 Résumé stock</div>
