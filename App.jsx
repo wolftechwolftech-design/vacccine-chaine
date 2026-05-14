@@ -574,7 +574,8 @@ export default function App() {
   const [toastMsg,setToastMsg]=useState(null);
   const [notifs,setNotifs]=useState([]);
   const [showNotifs,setShowNotifs]=useState(false);
-
+  
+const [showRapport,setShowRapport]=useState(false);const [rapportSections,setRapportSections]=useState({stock:true,temperature:true,releves:true,login:false});
   useEffect(()=>{
     const saved=localStorage.getItem("vc_user");
     if(saved) setCurrentUser(JSON.parse(saved));
