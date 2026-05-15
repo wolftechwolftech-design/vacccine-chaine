@@ -324,7 +324,7 @@ function DashboardTab({ vaccins, releves, toast, isAdmin }) {
       )}
       {isAdmin&&(
         <div className="btn-row" style={{marginBottom:16}}>
-          <button className="btn btn-primary" onClick={async()=>{toast("📄 Génération...");await exportPDF(vaccins,releves);}}>
+          <button className="btn btn-primary" onClick={async()=>{toast("📄 Génération...");await <RapportPDF(vaccins,releves);}}>
             📄 Rapport PDF
           </button>
         </div>
